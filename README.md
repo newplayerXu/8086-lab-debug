@@ -4,6 +4,8 @@ Debug 8086 assembly with registers, flags, data and stack in VS Code. Version 0.
 
 ## First use
 
+The local 0.5 candidate also includes a separate **web-only entry** for vscode.dev/github.dev, following the MASM/TASM assembler selection with jsdos/jsdos-x. Desktop activation keeps its existing implementation. See [web setup and boundaries](docs/WEB.zh-CN.md).
+
 1. Install Windows x64 desktop VS Code. The required `xsro.masm-tasm` extension is installed as a dependency.
 2. Open a trusted assembly workspace. The CPU and disassembler are included in the VSIX. **8086 Lab: Check Bundled Runtime** is an optional verification command.
 3. Select an assembler and emulator using MASM/TASM's status bar. With **jsdos** or **jsdos-x**, no external DOSBox executable is required. With **dosbox** or **dosbox-x**, install that selected emulator and configure its command in MASM/TASM.
@@ -20,7 +22,7 @@ The extension assembles actual machine code with the selected compiler, then exe
 | MASM-v5.00 | MASM 5.00 + LINK |
 | MASM-v6.11 | MASM 6.11 / ML + LINK |
 
-All four emulator selections are dispatched separately: jsdos, jsdos-x, dosbox, dosbox-x. Selection settings are read for the source resource on every launch; changing them takes effect after restart. The Output channel reports the effective selection. Compiler bundles and js-dos are discovered in the installed dependency. No compiler, emulator binary or WebAssembly engine is redistributed.
+All four emulator selections are dispatched separately on desktop: jsdos, jsdos-x, dosbox, dosbox-x. The web entry supports jsdos/jsdos-x. Selection settings are read for the source resource on every launch; changing them takes effect after restart. Compiler bundles and js-dos are discovered in the installed dependency. No proprietary compiler or js-dos compilation engine is redistributed; the debugging CPU and decoder WASM are bundled.
 
 ## Controls
 

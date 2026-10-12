@@ -3,7 +3,9 @@ const path = require("node:path"),
   { Session, REGS, FLAGS } = require("./core");
 const hex = (n) => "0x" + n.toString(16).toUpperCase().padStart(4, "0");
 const samePath = (a, b) =>
-  path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+  path.caseSensitive
+    ? path.resolve(a) === path.resolve(b)
+    : path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 class Adapter {
   constructor(writer) {
     this.writer = writer;

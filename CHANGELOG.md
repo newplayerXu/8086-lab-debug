@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — local web candidate
+
+- Add a browser entry that activates only in the VS Code web UI; retain the desktop entry and compiler behavior.
+- Follow MASM/TASM's TASM/MASM 5.00/MASM 6.11 selection and jsdos/jsdos-x browser compilation.
+- Bridge the shared WASM debugger to native VS Code registers, variables, breakpoints and source stepping.
+- Support virtual file-system URIs, relative INCLUDE and browser-only temporary build storage.
+- Add real-browser runtime and VS Code web-host integration tests.
+
 ## 0.4.0
 
 - Replace Python/Capstone runtime with inline JavaScript DAP, bundled Unicorn x86 WASM and iced-x86 WASM; no runtime setup/downloads.

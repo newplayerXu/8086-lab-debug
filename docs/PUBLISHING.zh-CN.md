@@ -68,7 +68,7 @@ git push
 npm ci
 npm test
 npm audit --audit-level=high
-npx vsce package --target win32-x64 --out 8086-lab-debug.vsix
+npx vsce package --out 8086-lab-debug.vsix
 ```
 
 另按 [开发说明](DEVELOPMENT.md) 使用本地 TASM/DOSBox-X 运行真实编译集成测试。GitHub CI 不包含专有编译器，不能替代这项验证。

@@ -1,3 +1,18 @@
+# 0.5.0 网页候选验收
+
+2026-10-12，Edge headless + 真实 VS Code Web 扩展宿主（稳定构建 2a59476c9bfcb90b3ddc372c36762471b7dfad1c），MASM/TASM 2.2.1。
+
+- 21 项回归通过，包含原桌面核心/DAP以及网页配置、虚拟 URI、相对 INCLUDE、GBK、目录隔离和文件边界。
+- 18 项真实浏览器编译调试通过：TASM/MASM 5.00/MASM 6.11 × jsdos/jsdos-x × EXE 寄存器、COM、教材分段复制。
+- 2 项真实 VS Code 网页宿主通过：MASM 5.00/jsdos COM、MASM 6.11/jsdos-x EXE。使用原生 stepOver 命令逐步执行，验证工作区源码定位、CX=8、RESULT=8、Registers 作用域和退出码 0。截图核验左侧实际显示寄存器。
+- 额外桌面编译回归：MASM 6.11/jsdos-x COM，CX=8、RESULT=8，通过。
+- npm audit：0 漏洞。
+- 网页入口仅在 UIKind.Web 注册功能。桌面 main 保留原实现；编译预设提取共享，未改变命令。
+
+当前为保留的本地候选，没有替换市场 0.4。真实浏览器和本地 VS Code Web 宿主已验证；公开 vscode.dev/github.dev 的市场分发安装及其他浏览器尚未验收。外部 DOSBox 和远程 Codespaces 宿主不属于这次网页适配验收。
+
+---
+
 # 0.4.0 发布验收
 
 2026-10-12，Windows x64，开发 Node 24.16.0；VS Code 8086-Lab-QA 内实际使用自带 JavaScript 运行时。

@@ -7,6 +7,8 @@ permissions:
   contents: read
 jobs:
   test:
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
@@ -20,7 +22,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm audit --audit-level=high
-      - run: npx vsce package --allow-missing-repository --target win32-x64 --out 8086-lab-debug.vsix
+      - run: npx vsce package --allow-missing-repository --out 8086-lab-debug.vsix
       - uses: actions/upload-artifact@v4
         with:
           name: 8086-lab-vsix-${{ matrix.os }}

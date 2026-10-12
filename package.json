@@ -2,7 +2,7 @@
   "name": "8086-lab-debug",
   "displayName": "8086 Lab: MASM/TASM Debugger",
   "description": "8086 source debugger with bundled JavaScript/WASM runtime; follows MASM/TASM selections. No Python setup.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "newplayerxu",
   "license": "SEE LICENSE IN LICENSE",
   "preview": true,
@@ -35,11 +35,11 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "Building executes local DOS assembler binaries."
+      "description": "Building runs a DOS assembler in an emulator; trust the workspace first."
     },
     "virtualWorkspaces": {
-      "supported": false,
-      "description": "The adapter requires local files and Windows tools."
+      "supported": true,
+      "description": "Web entry supports virtual files through the VS Code file-system API; desktop builds still require local files."
     }
   },
   "scripts": {
@@ -47,10 +47,19 @@
     "test:js": "node --test test/*.test.js",
     "test": "npm run check && npm run test:js",
     "package": "vsce package --allow-missing-repository",
-    "vscode:prepublish": "npm test"
+    "vscode:prepublish": "npm test && npm run build:web",
+    "build:web": "node scripts/build-web.js",
+    "test:web:runtime": "node scripts/test-web-runtime.cjs",
+    "test:web:host": "node scripts/test-web-host.cjs"
   },
   "devDependencies": {
-    "@vscode/vsce": "4.0.0"
+    "@playwright/test": "1.56.1",
+    "@vscode/test-web": "0.0.81",
+    "@vscode/vsce": "4.0.0",
+    "buffer": "6.0.3",
+    "esbuild": "0.25.11",
+    "fflate": "0.8.3",
+    "path-browserify": "1.0.1"
   },
   "contributes": {
     "commands": [
@@ -207,5 +216,6 @@
     "adm-zip": "0.6.1",
     "iced-x86": "1.21.0",
     "iconv-lite": "0.7.2"
-  }
+  },
+  "browser": "./dist/web/extension.js"
 }

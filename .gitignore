@@ -8,3 +8,7 @@ dist/
 .env
 *.pat
 *.token
+
+.vscode-test-web/
+playwright-report/
+test-results/

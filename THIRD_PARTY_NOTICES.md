@@ -28,4 +28,6 @@ Changes: imagegen assisted square background extension and reframing for the ext
 
 ## Embedded compiler runtime
 
+The web bundles include buffer 6.0.3 (and base64-js/ieee754), path-browserify 1.0.1 and fflate 0.8.3 under MIT. Their complete notices are collected in `third_party/web-runtime-licenses.txt`. iced-x86's MIT JS wrapper is adapted at build time to initialize its unchanged WASM asynchronously; `scripts/build-web.js` records the transformation. esbuild, Playwright and VS Code test-web are development tools and are not runtime dependencies.
+
 The js-dos engine is loaded from the installed xsro.masm-tasm extension, not redistributed. 0.3.0 was verified with MASM/TASM 2.2.1 / emulators 8.4.1-dosasm0.2. Its Node platform adapter depends on the current bundle layout and fails explicitly if upstream changes it.
