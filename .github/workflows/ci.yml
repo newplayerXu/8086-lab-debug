@@ -1,0 +1,32 @@
+name: Test and package
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: npm ci
+      - run: python -m pip install -r requirements.txt
+      - run: npm test
+      - run: python -m unittest discover -s test -p "test_*.py" -v
+      - run: npm audit --audit-level=high
+      - run: npx vsce package --allow-missing-repository --target win32-x64 --out 8086-lab-debug.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 8086-lab-vsix-${{ matrix.os }}
+          path: 8086-lab-debug.vsix

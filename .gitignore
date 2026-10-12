@@ -1,0 +1,10 @@
+node_modules/
+*.vsix
+.venv/
+__pycache__/
+*.pyc
+.8086-build/
+dist/
+.env
+*.pat
+*.token

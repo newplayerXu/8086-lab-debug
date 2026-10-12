@@ -1,0 +1,45 @@
+name: Create GitHub release VSIX
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: 8086-lab-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: npm ci
+      - run: python -m pip install -r requirements.txt
+      - run: npm test
+      - run: python -m unittest discover -s test -p "test_*.py" -v
+      - run: npm audit --audit-level=high
+      - name: Configure registered publisher and repository
+        env:
+          MARKETPLACE_PUBLISHER: ${{ vars.MARKETPLACE_PUBLISHER }}
+        shell: pwsh
+        run: |
+          node scripts/prepare-release.js --publisher "$env:MARKETPLACE_PUBLISHER" --repository "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - run: npx vsce package --target win32-x64 --out 8086-lab-debug.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-ready-vsix
+          path: 8086-lab-debug.vsix
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create "v$env:RELEASE_VERSION" 8086-lab-debug.vsix --target "$env:GITHUB_SHA" --title "8086 Lab $env:RELEASE_VERSION (Preview)" --notes-file CHANGELOG.md --prerelease

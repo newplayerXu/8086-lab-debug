@@ -1,0 +1,204 @@
+{
+  "name": "8086-lab-debug",
+  "displayName": "8086 Lab: MASM/TASM Debugger",
+  "description": "Step through 16-bit MASM/TASM machine code with registers, flags, memory and stack in VS Code.",
+  "version": "0.2.0",
+  "publisher": "newplayerxu",
+  "license": "SEE LICENSE IN LICENSE",
+  "preview": true,
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=22"
+  },
+  "categories": [
+    "Debuggers",
+    "Education"
+  ],
+  "keywords": [
+    "8086",
+    "masm",
+    "tasm",
+    "assembly",
+    "registers",
+    "real-mode"
+  ],
+  "main": "./src/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "extensionDependencies": [
+    "xsro.masm-tasm"
+  ],
+  "activationEvents": [
+    "onDebugResolve:8086-lab"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Building executes local DOS assembler binaries."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "The adapter requires local files and Windows tools."
+    }
+  },
+  "scripts": {
+    "check": "node --check src/extension.js && node --check src/runtime.js && node scripts/check.js",
+    "test:js": "node --test test/runtime.test.js",
+    "test": "npm run check && npm run test:js",
+    "package": "vsce package --allow-missing-repository",
+    "vscode:prepublish": "npm test"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.0.0"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "8086lab.setup",
+        "title": "8086 Lab: Set Up Python Runtime"
+      },
+      {
+        "command": "8086lab.check",
+        "title": "8086 Lab: Check Environment"
+      },
+      {
+        "command": "8086lab.chooseDosbox",
+        "title": "8086 Lab: Select DOSBox-X Executable"
+      },
+      {
+        "command": "8086lab.debugFile",
+        "title": "8086 Lab: Debug Current ASM File"
+      },
+      {
+        "command": "8086lab.openSample",
+        "title": "8086 Lab: Open Register Tutorial"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "8086lab.debugFile",
+          "when": "resourceExtname == .asm",
+          "group": "8086lab"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "8086 Lab",
+      "properties": {
+        "8086lab.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Python 3.10+ executable used to create the private runtime."
+        },
+        "8086lab.runtimePythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional existing Python executable with requirements installed; skips the private runtime."
+        },
+        "8086lab.dosboxPath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to DOSBox-X. Leave empty to search PATH or the MASM/TASM command setting."
+        },
+        "8086lab.tasmDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "Optional directory containing legally available TASM.EXE and TLINK.EXE. By default uses the MASM/TASM dependency's bundle."
+        },
+        "8086lab.buildDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "Optional writable ASCII path for temporary builds. Each session receives its own subdirectory."
+        }
+      }
+    },
+    "breakpoints": [
+      {
+        "language": "assembly"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "8086-lab",
+        "label": "8086 Lab (MASM/TASM)",
+        "languages": [
+          "assembly"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Single-file 16-bit MASM/TASM source.",
+                "default": "${file}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": true
+              },
+              "maxInstructions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000000,
+                "default": 1000000,
+                "description": "Maximum instructions per continue before pausing."
+              },
+              "sourceEncoding": {
+                "type": "string",
+                "enum": [
+                  "utf-8-sig",
+                  "gbk",
+                  "cp437"
+                ],
+                "default": "utf-8-sig"
+              },
+              "dosboxPath": {
+                "type": "string",
+                "description": "Override DOSBox-X executable for this launch."
+              },
+              "tasmDirectory": {
+                "type": "string",
+                "description": "Override TASM/TLINK directory for this launch."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "name": "8086 Lab: Debug current ASM",
+            "type": "8086-lab",
+            "request": "launch",
+            "program": "${file}",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "8086 Lab: MASM/TASM",
+            "description": "Debug an ASM source with registers and flags.",
+            "body": {
+              "name": "8086 Lab: Debug current ASM",
+              "type": "8086-lab",
+              "request": "launch",
+              "program": "^\"\\${file}\"",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/newplayerXu/8086-lab-debug.git"
+  },
+  "homepage": "https://github.com/newplayerXu/8086-lab-debug#readme",
+  "bugs": {
+    "url": "https://github.com/newplayerXu/8086-lab-debug/issues"
+  }
+}
