@@ -50,9 +50,9 @@ Watch expressions accept registers, flags, data symbols and integer operations, 
 
 ## Scope and limitations
 
-Requires `.8086`, `.model small`, exactly one `.code`, and a single source file. Unicode comments are accepted; compiler source literals must fit CP437. The build path must be ASCII; use `8086lab.buildDirectory` if the temporary directory contains other characters.
+Supports a single source file using either `.8086` / `.model small` / one `.code`, or textbook explicit `SEGMENT` / `ENDS` / `ASSUME` / `END entry` declarations with one executable segment. Explicit sources may omit `.8086`, using the assembler's default 8086 mode. `ORG`, `DB`, `DW` and `DUP` are supported; segment addresses come from the linker map and data offsets from the assembler symbol table. See `samples/segments-copy.asm`. Unicode comments are accepted; compiler source literals must fit CP437. The build path must be ASCII; use `8086lab.buildDirectory` if the temporary directory contains other characters.
 
-Includes, macros, explicit segments, multi-file builds, custom `dosasm.jsonc` and altered MASM/TASM build actions are not mapped by this preview. They fail clearly instead of silently using another assembler. Conditional/log breakpoints and a reconstructed symbolic call stack are unsupported. Built-in actions are used with extra listing/map generation required by source debugging.
+Includes, macros, explicit GROUP layouts, multiple executable segments, multi-file builds, custom `dosasm.jsonc` and altered MASM/TASM build actions are not supported by this preview. Conditional/log breakpoints and a reconstructed symbolic call stack are unsupported. Built-in actions are used with extra listing/map generation required by source debugging. An empty segment named STACKS alone does not allocate a DOS stack; the compiler/linker warning is preserved. Allocate a segment with STACK combine and space before using PUSH/CALL.
 
 Implemented services: INT 21h AH=02h/09h/30h/4Ch, INT 20h exit, INT 10h AH=0Eh output. Keyboard/file services, port I/O and hardware timing are unsupported. Unsupported services pause with an error. For a complete DOS environment, use MASM/TASM's DOS debugger.
 

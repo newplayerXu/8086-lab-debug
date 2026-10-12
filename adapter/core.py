@@ -29,32 +29,65 @@ def strip_comment(line):
 
 def normalize(line): return re.sub(r'\s+', '', strip_comment(line)).lower()
 
+def explicit_code_segment(text):
+    current, labels, segments = None, {}, set()
+    for line in text.splitlines():
+        line = strip_comment(line).strip()
+        start = re.match(r'^(\w+)\s+segment\b', line, re.I)
+        if start:
+            if current: raise ValueError('Nested SEGMENT declarations are unsupported.')
+            current = start[1].upper();segments.add(current)
+        end = re.match(r'^(\w+)\s+ends\b', line, re.I)
+        if end:
+            if current != end[1].upper(): raise ValueError('SEGMENT/ENDS names must match.')
+            current = None
+        label = re.match(r'^(\w+)\s*(?::|\s+proc\b)', line, re.I)
+        if label and current: labels[label[1].upper()] = current
+    entry = re.search(r'^\s*end\s+(\w+)\s*$', text, re.M | re.I)
+    if current or not entry or entry[1].upper() not in labels:
+        raise ValueError('Explicit segments require matched ENDS and END with an entry label.')
+    code = labels[entry[1].upper()]
+    assumptions = re.findall(r'\bCS\s*:\s*(\w+)', text, re.I)
+    if any(name.upper() != code for name in assumptions):
+        raise ValueError('Only one executable segment is supported; CS must name the entry segment.')
+    if re.search(r'^\s*\w+\s+group\b', text, re.M | re.I):
+        raise ValueError('Explicit GROUP layouts are not supported yet.')
+    return code
+
 def validate_source(text):
     clean = '\n'.join(strip_comment(line) for line in text.splitlines())
-    if not re.search(r'^\s*\.8086\s*$', clean, re.M | re.I):
-        raise ValueError('Add .8086 to restrict assembled instructions to the 8086 instruction set.')
-    if not re.search(r'^\s*\.model\s+small\s*$', clean, re.M | re.I):
-        raise ValueError('Preview 0.2 requires .model small and a single .code segment.')
-    if len(re.findall(r'^\s*\.code\b', clean, re.M | re.I)) != 1:
-        raise ValueError('Exactly one .code segment is supported.')
-    if re.search(r'^\s*(?:\.(?:[123456]86|x64)|include\b|includelib\b|\w+\s+(?:macro|segment)\b)', clean, re.M | re.I):
-        raise ValueError('Includes, macros, explicit segments and newer CPU directives are not supported in preview 0.2.')
+    if re.search(r'^\s*(?:\.(?:[123456]86\w*|x64|mmx|xmm|k3d)|include\b|includelib\b|\w+\s+macro\b)|\buse32\b', clean, re.M | re.I):
+        raise ValueError('Includes, macros and newer CPU directives are unsupported.')
+    if re.search(r'^\s*\w+\s+segment\b', clean, re.M | re.I):
+        if re.search(r'^\s*\.(?:model|code|data|stack)\b', clean, re.M | re.I):
+            raise ValueError('Do not mix simplified and explicit segment declarations.')
+        explicit_code_segment(clean)
+    else:
+        if not re.search(r'^\s*\.8086\s*$', clean, re.M | re.I):
+            raise ValueError('Add .8086 to restrict assembled instructions to the 8086 instruction set.')
+        if not re.search(r'^\s*\.model\s+small\s*$', clean, re.M | re.I) or len(re.findall(r'^\s*\.code\b', clean, re.M | re.I)) != 1:
+            raise ValueError('Use .model small with one .code, or explicit SEGMENT/ENDS with END entry.')
 
 def parse_listing(listing, source):
     lines, symbols, code, cursor = {}, {}, False, 0
     source_lines = source.splitlines()
+    explicit = explicit_code_segment(source) if re.search(r'^\s*\w+\s+segment\b', source, re.M | re.I) else None
     for row in listing.splitlines():
+        if explicit:
+            if re.search(r'\b'+re.escape(explicit)+r'\s+segment\b', row, re.I): code=True;continue
+            if re.search(r'\b\w+\s+(?:segment|ends)\b', row, re.I): code=False
         if re.search(r'\s\.code\b', row, re.I): code = True;continue
         if re.search(r'\s\.(?:data|stack)\b', row, re.I) or row.strip() == 'Symbol Table': code = False
-        if not code: continue
         match = re.match(r'^\s*\d+\s+([0-9A-F]{4})\s+([0-9A-F]{2,})(?:\s|[rs])', row, re.I)
         if not match: match = re.match(r'^\s*([0-9A-F]{4})\s+([0-9A-F]{2,})(?:\s|[rs])', row, re.I)
         if not match: continue
+        if not code and not explicit: continue
         row_normal = normalize(row)
-        for index in range(cursor, len(source_lines)):
+        for index in range(cursor if code else 0, len(source_lines)):
             instruction = re.sub(r'^\w+:\s*', '', strip_comment(source_lines[index]).strip())
-            if not instruction or instruction.startswith('.') or re.search(r'\b(?:proc|endp|equ|dw|db|end)\b', instruction, re.I): continue
+            if not instruction or instruction.startswith('.') or re.search(r'\b(?:proc|endp|equ|dw|db|dd|dq|dt|end|segment|ends|assume|org|group)\b', instruction, re.I): continue
             if row_normal.endswith(normalize(instruction)):
+                if not code: raise ValueError('Instructions in multiple executable segments are unsupported.')
                 lines[int(match[1], 16)] = index + 1;cursor = index + 1;break
     if not lines: raise ValueError('Assembler listing has no supported source-to-instruction mapping.')
     for match in re.finditer(r'^([A-Z_][\w]*)\s+(Byte|Word)\s+DGROUP:([0-9A-F]{4})', listing, re.M):
@@ -64,6 +97,19 @@ def parse_listing(listing, source):
             match = re.match(r'^\s*([0-9A-F]{4})\s+[0-9A-F]{2,}(?:\s+[0-9A-F]{2,})*\s+([A-Za-z_]\w*)\s+(db|dw)\b', strip_comment(row), re.I)
             if match: symbols[match[2].upper()] = (int(match[1], 16), 1 if match[3].lower() == 'db' else 2)
     return lines, symbols
+
+def explicit_symbols(listing, map_text):
+    segments = {m[2].upper(): int(m[1],16) for m in re.finditer(r'^\s*([0-9A-F]+)H\s+[0-9A-F]+H\s+[0-9A-F]+H\s+(\w+)', map_text, re.M | re.I)}
+    result = {}
+    patterns = [r'^(\w+)\s+(Byte|Word)\s+(\w+):([0-9A-F]{4})\b', r'^(\w+)\s+(?:\.\s*)+(?:L\s+)?(Byte|Word)\s+([0-9A-F]{4})\s+(\w+)\b']
+    for row in listing.splitlines():
+        for index, pattern in enumerate(patterns):
+            m = re.match(pattern, row, re.I)
+            if not m: continue
+            segment, offset = (m[3],m[4]) if index==0 else (m[4],m[3])
+            if segment.upper() not in segments: raise ValueError('Missing segment address for data symbol '+m[1])
+            result[m[1].upper()] = (segments[segment.upper()]+int(offset,16), 1 if m[2].lower()=='byte' else 2)
+    return result
 
 def relocate_mz(data, load_segment):
     if len(data) < 28: raise ValueError('Truncated DOS MZ header.')
@@ -174,11 +220,16 @@ class Session:
         map_text = (self.build / 'MAIN.MAP').read_text(encoding='cp437', errors='replace')
         match = re.search(r'^\s*([0-9A-F]+)H\s+\w+H\s+\w+H\s+_DATA\s+DATA', map_text, re.M | re.I)
         self.data_segment = self.load_segment + int(match[1], 16) // 16 if match else self.load_segment
-        self.lines, self.symbols = parse_listing(listing.read_text(encoding='cp437', errors='replace'), clean)
-        if assembler != 'TASM' and match:
+        listing_text = listing.read_text(encoding='cp437', errors='replace')
+        self.lines, self.symbols = parse_listing(listing_text, clean)
+        explicit = bool(re.search(r'^\s*\w+\s+segment\b', clean, re.M | re.I))
+        if explicit:
+            self.data_segment = self.load_segment
+            self.symbols = explicit_symbols(listing_text, map_text)
+        elif assembler != 'TASM' and match:
             bias = int(match[1], 16) % 16
             self.symbols = {name: (offset + bias, size) for name, (offset, size) in self.symbols.items()}
-        if self.symbols and not match: raise ValueError('Named data requires the expected _DATA segment in this preview.')
+        if self.symbols and not match and not explicit: raise ValueError('Named data requires the expected _DATA segment in this preview.')
         self.u.hook_add(UC_HOOK_INTR, self.interrupt)
 
     def interrupt(self, emulator, number, unused):

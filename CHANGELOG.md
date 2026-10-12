@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Support textbook explicit SEGMENT/ENDS/ASSUME/END entry source syntax, including ORG and DUP, with one executable segment.
+- Map data symbols through each named segment's linker address for MASM 5.00, MASM 6.11 and TASM; no hardcoded _DATA/DGROUP requirement for explicit sources.
+- Add a byte-copy sample and actual compiler/backend validation for both data-first and code-first layouts.
+
 ## 0.3.0
 
 - Follow the resource-scoped MASM/TASM assembler and emulator selection on each launch.

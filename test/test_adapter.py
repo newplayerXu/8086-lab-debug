@@ -5,7 +5,7 @@ import sys
 import threading
 import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'adapter'))
-from core import Session, REGS, FLAGS, MEMORY_SIZE, relocate_mz, parse_listing, validate_source
+from core import Session, REGS, FLAGS, MEMORY_SIZE, relocate_mz, parse_listing, validate_source, explicit_symbols
 from main import Adapter
 from unicorn import Uc, UC_ARCH_X86, UC_MODE_16
 
@@ -79,6 +79,16 @@ class CoreTests(unittest.TestCase):
         lines,symbols=parse_listing(listing,source)
         self.assertEqual(lines,{0:2,1:3,4:4,5:5})
         self.assertEqual(symbols['RESULT'],(4,2))
+    def test_explicit_segments_listing_and_segment_relative_data(self):
+        source='DATAS SEGMENT\nDAT1 DB 1\nDATAS ENDS\nCODES SEGMENT\nASSUME CS:CODES,DS:DATAS\nSTART: MOV AX,DATAS\nNOP\nCODES ENDS\nEND START'
+        validate_source(source)
+        listing='0000 DATAS SEGMENT\n2000 01 DAT1 DB 1\n2001 DATAS ENDS\n0000 CODES SEGMENT\n0000 B8 ---- R START: MOV AX,DATAS\n0003 90 NOP\n0004 CODES ENDS\nDAT1 . . . . L BYTE 2000 DATAS'
+        self.assertEqual(parse_listing(listing,source)[0],{0:6,3:7})
+        mapping=' 00026H 02026H 02001H DATAS\n 02030H 02033H 00004H CODES'
+        self.assertEqual(explicit_symbols(listing,mapping),{'DAT1':(0x2026,1)})
+        self.assertEqual(explicit_symbols('DAT1 Byte DATAS:2000',mapping),{'DAT1':(0x2026,1)})
+        for bad in [source.replace('DATAS ENDS','WRONG ENDS'),source.replace('END START','END MISSING'),source.replace('CS:CODES','CS:DATAS')]:
+            with self.assertRaises(ValueError):validate_source(bad)
     def test_mz_relocation_and_malformed_headers(self):
         header=struct.pack('<14H',0x5a4d,36,1,1,2,0,0,0,0x100,0,0,0,28,0)
         binary=header+struct.pack('<HH',0,0)+b'\x03\x00\x90\x90'

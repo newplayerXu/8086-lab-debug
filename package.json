@@ -2,7 +2,7 @@
   "name": "8086-lab-debug",
   "displayName": "8086 Lab: MASM/TASM Debugger",
   "description": "Follow MASM/TASM compiler and emulator selections; debug 8086 machine code with registers, flags, memory and stack.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "newplayerxu",
   "license": "SEE LICENSE IN LICENSE",
   "preview": true,
