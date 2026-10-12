@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Follow the resource-scoped MASM/TASM assembler and emulator selection on each launch.
+- Support TASM, MASM (alias for 6.11), MASM 5.00 and MASM 6.11 with appropriate compiler/linker tools and listing parsers.
+- Compile through the dependency's jsdos/jsdos-x runtime without an external DOSBox executable; retain DOSBox/DOSBox-X backends.
+- Correct MASM data symbol addresses when the linked data segment starts within a paragraph.
+- Reject custom project/action workflows rather than silently compiling with a different toolchain.
+- Add the approved real 8086 photograph icon, with image attribution and license.
+
+
 ## 0.2.0 — Preview candidate
 
 - Declare MASM/TASM as a required extension and discover its compiler bundle.

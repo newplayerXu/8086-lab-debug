@@ -1,8 +1,8 @@
 {
   "name": "8086-lab-debug",
   "displayName": "8086 Lab: MASM/TASM Debugger",
-  "description": "Step through 16-bit MASM/TASM machine code with registers, flags, memory and stack in VS Code.",
-  "version": "0.2.0",
+  "description": "Follow MASM/TASM compiler and emulator selections; debug 8086 machine code with registers, flags, memory and stack.",
+  "version": "0.3.0",
   "publisher": "newplayerxu",
   "license": "SEE LICENSE IN LICENSE",
   "preview": true,
@@ -43,8 +43,8 @@
     }
   },
   "scripts": {
-    "check": "node --check src/extension.js && node --check src/runtime.js && node scripts/check.js",
-    "test:js": "node --test test/runtime.test.js",
+    "check": "node --check src/extension.js && node --check src/runtime.js && node scripts/check.js && node --check src/selection.js && node --check src/jsdos-build.cjs",
+    "test:js": "node --test test/*.test.js",
     "test": "npm run check && npm run test:js",
     "package": "vsce package --allow-missing-repository",
     "vscode:prepublish": "npm test"
@@ -100,12 +100,12 @@
         "8086lab.dosboxPath": {
           "type": "string",
           "default": "",
-          "description": "Full path to DOSBox-X. Leave empty to search PATH or the MASM/TASM command setting."
+          "description": "Optional DOSBox-X executable override when MASM/TASM selects dosbox-x. jsdos/jsdos-x use the dependency runtime and need no external DOSBox executable."
         },
         "8086lab.tasmDirectory": {
           "type": "string",
           "default": "",
-          "description": "Optional directory containing legally available TASM.EXE and TLINK.EXE. By default uses the MASM/TASM dependency's bundle."
+          "description": "Optional TASM/TLINK directory when TASM is selected. Clear it to follow MASM built-in compiler bundles."
         },
         "8086lab.buildDirectory": {
           "type": "string",
@@ -200,5 +200,6 @@
   "homepage": "https://github.com/newplayerXu/8086-lab-debug#readme",
   "bugs": {
     "url": "https://github.com/newplayerXu/8086-lab-debug/issues"
-  }
+  },
+  "icon": "assets/icon.png"
 }

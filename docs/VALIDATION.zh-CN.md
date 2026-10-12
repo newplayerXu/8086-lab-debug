@@ -1,22 +1,20 @@
-# 候选版验证记录
+# 0.3.0 验证记录
 
-日期：2026-10-12。版本：0.2.0。系统：本机 Windows x64。
+2026-10-12，本机 Windows x64。
 
-## 已通过
+- Python 18 项核心/DAP 回归通过。
+- JavaScript 5 项测试通过，覆盖四种汇编器选择 × 四种模拟器选择的分发及未知选择错误。
+- 实际 TASM、MASM 5.00、MASM 6.11 × jsdos、jsdos-x、DOSBox-X，共 9 组编译/调试集成测试通过。
+- 每组核验源码入口行、AX/BX 加法、PUSH/POP、CX、ZF、RESULT、源码 NOP 行、DOS 输出和退出。
+- MASM 6.11 采用 ML /c /Fl 与 LINK /MAP，不依赖缺失的 CVPACK。
+- MASM 数据段未按段落对齐时，变量偏移修正已由真实集成覆盖。
+- npm 审计 0 漏洞。
+- VS Code 8086-Lab-QA 配置下实际启动 MASM 6.11 / jsdos-x，源码单步和侧栏寄存器正常；从 MASM/TASM 状态栏切换 MASM 5.00 后重启，构建日志确认自动改用 MASM 5.00 / jsdos-x，重新停在源码入口。
 
-- 18 项 Python 核心/DAP 测试：真实指令加法、堆栈、标志位、间接 CALL、RET 参数清栈、step out、异常位置、端口操作拒绝、安全表达式、寄存器范围、内存范围、源码映射、MZ 重定位、断点归属、条件断点拒绝、继续/暂停、数据编辑、反汇编与未知请求错误。
-- 3 项 JavaScript 运行环境测试：可执行文件解析、PATH 查找与不支持平台错误。
-- 实际 TASM 4.1 + TLINK 7.1.30.1 + DOSBox-X 2026.10.01 集成测试：样例编译、源码行定位、AX=8/BX=3、PUSH/POP、ZF=1、RESULT=8、输出与退出。
-- npm audit：已更新打包工具为 @vscode/vsce 4.0.0，扫描结果 0 个漏洞。
-- 官方 vsce 打包成功；包声明 `xsro.masm-tasm` 为依赖。
-- VSIX 内容检查：不包含 EXE、DLL、Python wheel、访问令牌或本机固定路径的运行源码。
-- 独立 VS Code 配置文件 `8086-Lab-QA`：安装候选版，执行首次 Python runtime setup；使用新建私有运行环境启动样例，F10 后左侧寄存器随执行变化。
+## 边界
 
-## 验证边界
-
-- 独立配置文件测试仍在同一台电脑完成，不等于另一台全新 Windows 的首次使用验证。
-- GitHub 工作流尚未提交到远程仓库，未在 GitHub Actions 服务上执行。
-- 尚无真实 Marketplace publisher，未上传市场、未核验市场名称唯一性。
-- 已验证样例与测试覆盖范围；并非对完整 8086 指令集、所有 DOS/BIOS 服务或硬件时序的认证。
-
-正式发布前：绑定真实 publisher/仓库，完成新电脑安装验收，运行远程 CI，再提交实际市场包。
+- 本机没有外部 DOSBox 0.74 可执行文件，普通 dosbox 原生后端尚未实测；命令分发已覆盖，需要安装后验收。
+- 新电脑首次使用、跨版本 MASM/TASM、js-dos 上游后续变更尚未验证。
+- js-dos 平台适配针对已安装 MASM/TASM 2.2.1 的引擎布局，布局变更会明确失败。
+- 自定义构建命令、dosasm.jsonc、多文件和完整 DOS/BIOS 仿真不在此版支持范围。
+- 本记录的编译测试只使用本地已有工具，不向 CI 或发行包复制专有编译器。

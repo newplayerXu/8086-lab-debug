@@ -8,6 +8,7 @@ import struct
 import subprocess
 import tempfile
 import zipfile
+from compiler import build_program
 from capstone import Cs, CS_ARCH_X86, CS_MODE_16
 from unicorn import Uc, UC_ARCH_X86, UC_MODE_16, UC_HOOK_INTR
 from unicorn import x86_const as xc
@@ -47,6 +48,7 @@ def parse_listing(listing, source):
         if re.search(r'\s\.(?:data|stack)\b', row, re.I) or row.strip() == 'Symbol Table': code = False
         if not code: continue
         match = re.match(r'^\s*\d+\s+([0-9A-F]{4})\s+([0-9A-F]{2,})(?:\s|[rs])', row, re.I)
+        if not match: match = re.match(r'^\s*([0-9A-F]{4})\s+([0-9A-F]{2,})(?:\s|[rs])', row, re.I)
         if not match: continue
         row_normal = normalize(row)
         for index in range(cursor, len(source_lines)):
@@ -54,9 +56,13 @@ def parse_listing(listing, source):
             if not instruction or instruction.startswith('.') or re.search(r'\b(?:proc|endp|equ|dw|db|end)\b', instruction, re.I): continue
             if row_normal.endswith(normalize(instruction)):
                 lines[int(match[1], 16)] = index + 1;cursor = index + 1;break
-    if not lines: raise ValueError('TASM listing has no supported source-to-instruction mapping.')
+    if not lines: raise ValueError('Assembler listing has no supported source-to-instruction mapping.')
     for match in re.finditer(r'^([A-Z_][\w]*)\s+(Byte|Word)\s+DGROUP:([0-9A-F]{4})', listing, re.M):
         symbols[match[1]] = (int(match[3], 16), 1 if match[2] == 'Byte' else 2)
+    if not symbols:
+        for row in listing.splitlines():
+            match = re.match(r'^\s*([0-9A-F]{4})\s+[0-9A-F]{2,}(?:\s+[0-9A-F]{2,})*\s+([A-Za-z_]\w*)\s+(db|dw)\b', strip_comment(row), re.I)
+            if match: symbols[match[2].upper()] = (int(match[1], 16), 1 if match[3].lower() == 'db' else 2)
     return lines, symbols
 
 def relocate_mz(data, load_segment):
@@ -152,31 +158,8 @@ class Session:
         try: encoded = clean.encode('cp437')
         except UnicodeEncodeError as error: raise ValueError('Non-ASCII string literals are outside this preview. Use numeric bytes for non-ASCII data.') from error
         (self.build / 'MAIN.ASM').write_bytes(encoded)
-        configured = args.get('tasmDirectory')
-        tools = pathlib.Path(configured).resolve() if configured else self.build / 'tools'
-        if not configured:
-            bundle = pathlib.Path(args.get('tasmBundle', ''))
-            if not bundle.is_file(): raise ValueError('TASM bundle is missing. Configure 8086lab.tasmDirectory.')
-            tools.mkdir()
-            with zipfile.ZipFile(bundle) as archive:
-                for info in archive.infolist():
-                    name = pathlib.PurePosixPath(info.filename)
-                    if name.parts and name.parts[0].lower() == 'tasm' and not info.is_dir():
-                        if len(name.parts) != 2 or name.name in ('.', '..') or not re.fullmatch(r'[A-Za-z0-9_.-]+', name.name): raise ValueError('Unsafe TASM bundle entry.')
-                        if info.file_size > 4 * 1024 * 1024: raise ValueError('TASM bundle entry exceeds supported size.')
-                        with archive.open(info) as source: (tools / name.name).write_bytes(source.read())
-        if not (tools / 'TASM.EXE').is_file() or not (tools / 'TLINK.EXE').is_file(): raise ValueError('TASM.EXE and TLINK.EXE were not found.')
-        if configured:
-            destination = self.build / 'tools';destination.mkdir()
-            for item in tools.iterdir():
-                if item.is_file(): shutil.copy2(item, destination / item.name)
-        commands = [f'mount c "{self.build}"', 'c:', 'path c:\\tools', 'tasm /zi /l MAIN.ASM > BUILD.LOG', 'if errorlevel 1 goto done', 'tlink /v MAIN.OBJ >> BUILD.LOG', ':done', 'exit']
-        conf = self.build / 'BUILD.CONF'
-        conf.write_text('[sdl]\noutput=surface\n[cpu]\ncore=normal\ncycles=fixed 20000\n[autoexec]\n' + '\n'.join(commands) + '\n', encoding='ascii')
-        executable = pathlib.Path(args.get('dosboxPath', '')).resolve()
-        if not executable.is_file(): raise ValueError('DOSBox-X executable was not found.')
-        self.emit('output', {'category': 'console', 'output': f'Building {self.source.name}\nBuild directory: {self.build}\n'})
-        subprocess.run([str(executable), '-conf', str(conf), '-nopromptfolder', '-noconsole'], cwd=str(self.build), timeout=45, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        self.emit('output', {'category': 'console', 'output': f'Building {self.source.name} with {args.get("assembler", "TASM")} / {args.get("buildBackend", "dosbox-x")}\nBuild directory: {self.build}\n'})
+        assembler = build_program(self.build, args)
         log = self.build / 'BUILD.LOG'
         self.emit('output', {'category': 'console', 'output': (log.read_text(encoding='cp437', errors='replace') if log.exists() else 'No build log.') + '\n'})
         binary, listing = self.build / 'MAIN.EXE', self.build / 'MAIN.LST'
@@ -192,6 +175,9 @@ class Session:
         match = re.search(r'^\s*([0-9A-F]+)H\s+\w+H\s+\w+H\s+_DATA\s+DATA', map_text, re.M | re.I)
         self.data_segment = self.load_segment + int(match[1], 16) // 16 if match else self.load_segment
         self.lines, self.symbols = parse_listing(listing.read_text(encoding='cp437', errors='replace'), clean)
+        if assembler != 'TASM' and match:
+            bias = int(match[1], 16) % 16
+            self.symbols = {name: (offset + bias, size) for name, (offset, size) in self.symbols.items()}
         if self.symbols and not match: raise ValueError('Named data requires the expected _DATA segment in this preview.')
         self.u.hook_add(UC_HOOK_INTR, self.interrupt)
 

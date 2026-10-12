@@ -3,6 +3,8 @@ const vscode = require('vscode');
 const fs = require('node:fs');
 const path = require('node:path');
 const runtime = require('./runtime');
+const {selectBuild}=require('./selection');
+const {isDeepStrictEqual}=require('node:util');
 
 function activate(context) {
   const output = vscode.window.createOutputChannel('8086 Lab');
@@ -30,7 +32,7 @@ function activate(context) {
       await runtime.run(python(), ['-m', 'pip', 'install', '--disable-pip-version-check', '-r', context.asAbsolutePath('requirements.txt')], {timeout: 300000});
       await checkPython();
     });
-    vscode.window.showInformationMessage('8086 Lab runtime is ready. Select DOSBox-X, then debug an ASM file.');
+    vscode.window.showInformationMessage('8086 Lab runtime is ready. Select an assembler/emulator in MASM/TASM, then debug an ASM file.');
   }
   async function environment(launch = {}) {
     runtime.validatePlatform();
@@ -38,16 +40,33 @@ function activate(context) {
     await checkPython();
     const dependency = vscode.extensions.getExtension('xsro.masm-tasm');
     if (!dependency) throw new Error('Install the required MASM/TASM extension: xsro.masm-tasm.');
-    const tasmDirectory = launch.tasmDirectory || config().get('tasmDirectory') || '';
-    if (tasmDirectory) {
-      for (const name of ['TASM.EXE', 'TLINK.EXE']) if (!fs.existsSync(path.join(tasmDirectory, name))) throw new Error(`Missing ${name} in the configured TASM directory.`);
+    const resource = launch.program && !launch.program.includes('${') ? vscode.Uri.file(launch.program) : vscode.window.activeTextEditor?.document.uri;
+    const masm = vscode.workspace.getConfiguration('masmtasm', resource);
+    const selection = selectBuild(masm.get('ASM.assembler'), masm.get('ASM.emulator'), dependency.extensionPath);
+    // Custom project scripts need their own artifact mapping; never silently use another compiler.
+    if (resource?.scheme === 'file') {
+      let dir=path.dirname(resource.fsPath);
+      while(true){
+        if(fs.existsSync(path.join(dir,'dosasm.jsonc')))throw new Error('Custom dosasm.jsonc workflows are not supported by the source debugger yet. Use a built-in single-file action or MASM/TASM Debug ASM.');
+        const parent=path.dirname(dir);if(parent===dir)break;dir=parent;
+      }
     }
-    const tasmBundle = path.join(dependency.extensionPath, 'resources', 'TASM.jsdos');
-    if (!tasmDirectory && !fs.existsSync(tasmBundle)) throw new Error('This MASM/TASM version does not provide resources/TASM.jsdos. Configure 8086lab.tasmDirectory.');
-    const dosbox = runtime.dosboxPath(launch.dosboxPath || config().get('dosboxPath'), vscode.workspace.getConfiguration('masmtasm').get('command.dosboxX'));
-    output.appendLine(`DOSBox-X: ${dosbox}`);
-    output.appendLine(`TASM: ${tasmDirectory || tasmBundle}`);
-    return {dosboxPath: dosbox, tasmDirectory, tasmBundle, buildRoot: config().get('buildDirectory') || ''};
+    const defaults=dependency.packageJSON.contributes.configuration.properties['masmtasm.ASM.actions'].default;
+    const action=masm.get('ASM.actions')?.[selection.assembler];
+    if(action && !isDeepStrictEqual(action,defaults[selection.assembler]))throw new Error('Custom MASM/TASM build actions need a dedicated mapping adapter. Restore the built-in action for source debugging.');
+    const tasmDirectory = launch.tasmDirectory || config().get('tasmDirectory') || '';
+    if(tasmDirectory && selection.assembler!=='TASM')throw new Error('Clear 8086lab.tasmDirectory to follow the selected MASM compiler.');
+    if(!tasmDirectory && !fs.existsSync(selection.assemblerBundle))throw new Error('The selected assembler bundle is missing from MASM/TASM.');
+    let dosboxPath='';
+    if(selection.buildBackend.startsWith('jsdos')){
+      if(!fs.existsSync(selection.jsdosEngine))throw new Error('The MASM/TASM js-dos runtime is missing.');
+    }else{
+      const setting=selection.buildBackend==='dosbox'?'command.dosbox':'command.dosboxX';
+      const override=launch.dosboxPath || (selection.buildBackend==='dosbox-x'?config().get('dosboxPath'):'');
+      dosboxPath=runtime.dosboxPath(override || runtime.executableFromCommand(masm.get(setting)),selection.buildBackend);
+    }
+    output.appendLine(`MASM/TASM selection: ${selection.selectedAssembler} → ${selection.assembler} / ${selection.buildBackend}`);
+    return {...selection,dosboxPath,tasmDirectory,nodePath:process.execPath,jsdosRunner:context.asAbsolutePath('src/jsdos-build.cjs'),buildRoot:config().get('buildDirectory') || ''};
   }
   function command(name, fn) {
     context.subscriptions.push(vscode.commands.registerCommand(name, async () => {

@@ -33,3 +33,7 @@ Code layout:
 - `test/integration.py`: actual TASM/DOSBox sample verification.
 
 Temporary build directories are created by the adapter and removed only through session-owned paths. No runtime package downloads occur during extension activation or a normal debugging session. Setup is a separate user command.
+
+## 0.3 compiler matrix
+
+Set `MASMTASM_RESOURCES` to the installed MASM/TASM `resources` directory, `DOSBOX_PATH` to DOSBox-X, and optionally `NODE_PATH` to Node or the VS Code Electron executable. Run `python test/integration_matrix.py dosbox-x jsdos jsdos-x`. This checks actual compiler output, source/data mapping, execution, registers, stack, flags and output. `python test/integration_matrix.py dosbox` requires DOSBOX_PATH to point to an installed classic DOSBox executable.
