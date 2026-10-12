@@ -62,14 +62,11 @@ git push
 
 ## 4. 本地验收与打包
 
-需要 Node.js 22+、Python 3.10+：
+0.4 起只需要 Node.js 22+，不需要 Python：
 
 ```powershell
 npm ci
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
 npm test
-.venv\Scripts\python -m unittest discover -s test -p "test_*.py" -v
 npm audit --audit-level=high
 npx vsce package --target win32-x64 --out 8086-lab-debug.vsix
 ```

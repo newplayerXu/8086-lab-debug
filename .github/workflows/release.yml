@@ -15,17 +15,12 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
       - run: npm ci
-      - run: python -m pip install -r requirements.txt
       - run: npm test
-      - run: python -m unittest discover -s test -p "test_*.py" -v
       - run: npm audit --audit-level=high
       - name: Configure registered publisher and repository
         env:
-          MARKETPLACE_PUBLISHER: ${{ vars.MARKETPLACE_PUBLISHER }}
+          MARKETPLACE_PUBLISHER: ${{ vars.MARKETPLACE_PUBLISHER || 'newplayerxu' }}
         shell: pwsh
         run: |
           node scripts/prepare-release.js --publisher "$env:MARKETPLACE_PUBLISHER" --repository "$env:GITHUB_REPOSITORY"

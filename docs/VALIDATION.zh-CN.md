@@ -1,3 +1,28 @@
+# 0.4.0 发布验收
+
+2026-10-12，Windows x64，开发 Node 24.16.0；VS Code 8086-Lab-QA 内实际使用自带 JavaScript 运行时。
+
+- JavaScript/WASM CPU、DAP、表达式、重定位、内存、断点、调用与暂停回归：16 项通过。
+- 16 类格式 × 3 种汇编器 × jsdos/jsdos-x/DOSBox-X：144 组实际编译调试通过。
+- 寄存器教程与教材显式分段复制程序 × 同一汇编器/后端矩阵：18 组通过。
+- 格式包括 tiny/small/medium/compact/large/huge、显式 COM、GROUP、多个代码段/远调用、简单宏、参数宏、INCLUDE、startup/exit、tiny startup、裸 ORG 100H、tiny 独立数据段。
+- 单步核验源码定位、寄存器、栈、标志、变量、DOS 输出和退出值。
+- VSIX 解压到独立目录，PATH 清空，编译与调试通过；拦截子进程确认未调用 Python/pip。包内无 Python 适配器、requirements 或解释器。
+- VS Code 无 Python 配置启动 MASM 5.00 / jsdos-x，停在入口；十次 F10 后 CX=8、RESULT=8、ZF=1，源码在 NOP 行。
+- 中文构建目录 + COM 示例在 jsdos/jsdos-x 通过。
+- npm audit：0 漏洞。
+- 微基准：本机 10000 次 JMP 自循环单步约 168 ms；不代表所有程序速度或完整 DOS 性能。
+
+## 修复要点与限制
+
+WASM 单步同时限制翻译终点与执行次数，避免长零填充分支译码越界。tiny 变量优先按 MAP 段地址加 LST 段内偏移，避免未链接的 DGROUP 偏移误读。MASM 5.00 tiny 的临时 ASSUME/GROUP 兼容不修改用户源文件。COM 要求入口 0000:0100、无段重定位；EXE 使用 MZ 头和重定位。
+
+未实测普通外部 DOSBox，因为本机未安装；其选择分发已覆盖。另一台新电脑未实际验收。DOS 服务仍为教育子集，端口/时序/完整 BIOS、独立多模块链接、复杂宏元编程和自定义构建需后续适配。上游 MASM/TASM 2.2.1 引擎布局仍有版本耦合。
+
+以下为历史版本记录，其旧限制不代表 0.4 当前行为。
+
+---
+
 # 0.3.0 验证记录
 
 2026-10-12，本机 Windows x64。

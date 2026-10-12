@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Replace Python/Capstone runtime with inline JavaScript DAP, bundled Unicorn x86 WASM and iced-x86 WASM; no runtime setup/downloads.
+- Support common DOS COM/EXE, tiny through huge models, explicit segments, GROUP, multiple code segments/far calls, simple positional macros and local INCLUDE files.
+- Add safe expressions, responsive pause/termination and tests for migrated debugger features.
+- Include corresponding GPL engine source and licenses.
+
 ## 0.3.1
 
 - Support textbook explicit SEGMENT/ENDS/ASSUME/END entry source syntax, including ORG and DUP, with one executable segment.

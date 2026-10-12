@@ -1,3 +1,17 @@
-const test=require('node:test'),assert=require('node:assert/strict');const {selectBuild}=require('../src/selection');
-test('every built-in assembler/emulator pairing follows the selected compiler',()=>{for(const a of ['TASM','MASM','MASM-v5.00','MASM-v6.11'])for(const e of ['jsdos','jsdos-x','dosbox','dosbox-x']){const s=selectBuild(a,e,'dependency');assert.equal(s.selectedAssembler,a);assert.equal(s.assembler,a==='MASM'?'MASM-v6.11':a);assert.equal(s.buildBackend,e);assert.ok(s.assemblerBundle.endsWith(s.assembler+'.jsdos'));}});
-test('unknown selections fail rather than silently switching compilers',()=>{assert.throws(()=>selectBuild('CUSTOM','jsdos','dependency'));assert.throws(()=>selectBuild('TASM','unknown','dependency'));});
+const test = require("node:test"),
+  assert = require("node:assert/strict");
+const { selectBuild } = require("../src/selection");
+test("every built-in assembler/emulator pairing follows the selected compiler", () => {
+  for (const a of ["TASM", "MASM", "MASM-v5.00", "MASM-v6.11"])
+    for (const e of ["jsdos", "jsdos-x", "dosbox", "dosbox-x"]) {
+      const s = selectBuild(a, e, "dependency");
+      assert.equal(s.selectedAssembler, a);
+      assert.equal(s.assembler, a === "MASM" ? "MASM-v6.11" : a);
+      assert.equal(s.buildBackend, e);
+      assert.ok(s.assemblerBundle.endsWith(s.assembler + ".jsdos"));
+    }
+});
+test("unknown selections fail rather than silently switching compilers", () => {
+  assert.throws(() => selectBuild("CUSTOM", "jsdos", "dependency"));
+  assert.throws(() => selectBuild("TASM", "unknown", "dependency"));
+});

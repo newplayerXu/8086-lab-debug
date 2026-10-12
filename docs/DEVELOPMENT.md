@@ -1,39 +1,34 @@
 # Development
 
-Requirements: Node.js 22+, Python 3.10+ and Git. Runtime debugging currently supports Windows desktop. Unit tests can also run on Linux; this does not make Linux debugging supported.
+Node.js 22+ and Git are sufficient. Runtime uses the JavaScript host supplied by desktop VS Code. No Python is needed for development tests or normal packaging.
 
 ```powershell
 npm ci
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
 npm test
-.venv\Scripts\python -m unittest discover -s test -p "test_*.py" -v
+npm audit --audit-level=high
 npm run package
 ```
 
-For the real compiler integration test, use a legally available installed MASM/TASM bundle and DOSBox-X:
+Real compiler validation uses legally available installed MASM/TASM resources:
 
 ```powershell
+$env:MASMTASM_RESOURCES = "C:\path\to\xsro.masm-tasm\resources"
 $env:DOSBOX_PATH = "C:\path\to\dosbox-x.exe"
-$env:TASM_BUNDLE = "C:\path\to\xsro.masm-tasm\resources\TASM.jsdos"
-.venv\Scripts\python test\integration.py
+node test/integration-js.cjs jsdos jsdos-x dosbox-x
+node test/integration-formats.cjs jsdos jsdos-x dosbox-x
 ```
 
-No proprietary compiler binaries are committed. CI runs hermetic CPU/DAP tests; the real TASM integration test requires the developer's external tools and runs locally.
+CI checks JavaScript/WASM CPU, DAP, loader, expression, memory and selection behavior on Windows and Linux. Compiler integration is local because proprietary tool bundles are not redistributed. Windows desktop remains the supported end-user platform.
 
-Open this folder in VS Code and start the **Run 8086 Lab extension** launch configuration to open an Extension Development Host. Install the declared MASM/TASM dependency in that host and configure Python/DOSBox-X. Test the register tutorial, F10/F11/F9/F5, stop/restart, missing-tool errors and unsupported interrupts before releasing.
+- src/extension.js: VS Code integration and inline DAP adapter.
+- src/adapter.js: DAP lifecycle and cooperative execution batches.
+- src/core.js: WASM CPU, MZ/COM loading, interrupts and stepping.
+- src/source.js: source/include preparation, listing and linker map parsing.
+- src/compiler.js: selected compiler and emulator dispatch.
+- src/expression.js: integer parser without eval.
+- test/core-js.test.js: engine/DAP regression.
+- adapter/ and Python tests: historical baseline only; excluded from VSIX.
 
-Code layout:
+Use the Extension Development Host to verify real UI behavior. Include runtime smoke tests from an extracted VSIX with Python-related settings and PATH absent. No runtime downloads or installation commands are needed.
 
-- `src/extension.js`: commands, configuration provider and adapter launch.
-- `src/runtime.js`: executable discovery and child process invocation without a shell.
-- `adapter/core.py`: source build, EXE loader, real machine-code execution and expression parsing.
-- `adapter/main.py`: DAP framing, responses, variables, breakpoints and worker lifecycle.
-- `test/test_adapter.py`: hermetic register/stack/loader/DAP regression tests.
-- `test/integration.py`: actual TASM/DOSBox sample verification.
-
-Temporary build directories are created by the adapter and removed only through session-owned paths. No runtime package downloads occur during extension activation or a normal debugging session. Setup is a separate user command.
-
-## 0.3 compiler matrix
-
-Set `MASMTASM_RESOURCES` to the installed MASM/TASM `resources` directory, `DOSBOX_PATH` to DOSBox-X, and optionally `NODE_PATH` to Node or the VS Code Electron executable. Run `python test/integration_matrix.py dosbox-x jsdos jsdos-x`. This checks actual compiler output, source/data mapping, execution, registers, stack, flags and output. `python test/integration_matrix.py dosbox` requires DOSBOX_PATH to point to an installed classic DOSBox executable.
+Bundled GPL engine source/rebuild instructions are in THIRD_PARTY_NOTICES.md and third_party/.

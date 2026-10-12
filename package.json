@@ -1,8 +1,8 @@
 {
   "name": "8086-lab-debug",
   "displayName": "8086 Lab: MASM/TASM Debugger",
-  "description": "Follow MASM/TASM compiler and emulator selections; debug 8086 machine code with registers, flags, memory and stack.",
-  "version": "0.3.1",
+  "description": "8086 source debugger with bundled JavaScript/WASM runtime; follows MASM/TASM selections. No Python setup.",
+  "version": "0.4.0",
   "publisher": "newplayerxu",
   "license": "SEE LICENSE IN LICENSE",
   "preview": true,
@@ -43,7 +43,7 @@
     }
   },
   "scripts": {
-    "check": "node --check src/extension.js && node --check src/runtime.js && node scripts/check.js && node --check src/selection.js && node --check src/jsdos-build.cjs",
+    "check": "node scripts/check.js && node --check src/extension.js && node --check src/adapter.js && node --check src/core.js && node --check src/compiler.js && node --check src/source.js && node --check src/expression.js",
     "test:js": "node --test test/*.test.js",
     "test": "npm run check && npm run test:js",
     "package": "vsce package --allow-missing-repository",
@@ -56,7 +56,7 @@
     "commands": [
       {
         "command": "8086lab.setup",
-        "title": "8086 Lab: Set Up Python Runtime"
+        "title": "8086 Lab: Check Bundled Runtime"
       },
       {
         "command": "8086lab.check",
@@ -87,16 +87,6 @@
     "configuration": {
       "title": "8086 Lab",
       "properties": {
-        "8086lab.pythonPath": {
-          "type": "string",
-          "default": "python",
-          "description": "Python 3.10+ executable used to create the private runtime."
-        },
-        "8086lab.runtimePythonPath": {
-          "type": "string",
-          "default": "",
-          "description": "Optional existing Python executable with requirements installed; skips the private runtime."
-        },
         "8086lab.dosboxPath": {
           "type": "string",
           "default": "",
@@ -110,7 +100,7 @@
         "8086lab.buildDirectory": {
           "type": "string",
           "default": "",
-          "description": "Optional writable ASCII path for temporary builds. Each session receives its own subdirectory."
+          "description": "Optional temporary build root. jsdos/jsdos-x support Unicode paths; external DOSBox builds require an ASCII path. Each session gets its own subdirectory."
         }
       }
     },
@@ -164,6 +154,16 @@
               "tasmDirectory": {
                 "type": "string",
                 "description": "Override TASM/TLINK directory for this launch."
+              },
+              "programFormat": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "exe",
+                  "com"
+                ],
+                "default": "auto",
+                "description": "Detect tiny/ORG 100H COM sources automatically, or force DOS EXE/COM loading."
               }
             }
           }
@@ -201,5 +201,11 @@
   "bugs": {
     "url": "https://github.com/newplayerXu/8086-lab-debug/issues"
   },
-  "icon": "assets/icon.png"
+  "icon": "assets/icon.png",
+  "dependencies": {
+    "@alexaltea/unicorn-js": "2.1.4",
+    "adm-zip": "0.6.1",
+    "iced-x86": "1.21.0",
+    "iconv-lite": "0.7.2"
+  }
 }
