@@ -286,6 +286,7 @@ class Session {
           1,
         )[0];
         if (b === 36) {
+          this.setReg("AX", (this.reg("AX") & 0xff00) | 0x24);
           this.emit("output", {
             category: "stdout",
             output: iconv.decode(Buffer.from(bytes), "cp437"),

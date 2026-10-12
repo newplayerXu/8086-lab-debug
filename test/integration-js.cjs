@@ -1,6 +1,8 @@
 "use strict";
 const path = require("node:path"),
+  fs = require("node:fs"),
   assert = require("node:assert/strict"),
+  { parseMap } = require("../src/source"),
   { Session } = require("../src/core");
 const root = path.resolve(__dirname, ".."),
   resources = process.env.MASMTASM_RESOURCES;
@@ -52,6 +54,8 @@ if (!backends.length) backends.push("jsdos", "jsdos-x", "dosbox-x");
               "Calculation finished!",
             );
           } else {
+            const linked = parseMap(fs.readFileSync(path.join(s.build, "MAIN.MAP"), "utf8"), s.sources);
+            assert.deepEqual([...linked.segments.keys()].sort(), ["CODES", "DATAS", "STACKS"]);
             for (let i = 0; i < 5; i++) s.step();
             assert.equal(s.reg("SI"), 0x2000);
             assert.equal(s.reg("DI"), 0x3000);

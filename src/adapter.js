@@ -1,7 +1,7 @@
 "use strict";
 const path = require("node:path"),
   { Session, REGS, FLAGS } = require("./core");
-const hex = (n) => "0x" + n.toString(16).toUpperCase().padStart(4, "0");
+const hex = (n) => (n < 0 ? "-0x" : "0x") + Math.abs(n).toString(16).toUpperCase().padStart(4, "0");
 const samePath = (a, b) =>
   path.caseSensitive
     ? path.resolve(a) === path.resolve(b)

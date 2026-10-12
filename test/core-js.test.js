@@ -4,6 +4,75 @@ const test = require("node:test"),
   { Session, engine, loadMZ, MEMORY_SIZE } = require("../src/core"),
   { Adapter } = require("../src/adapter"),
   { parseMap, parseListing } = require("../src/source");
+
+test("MAP blank classes retain every segment on LF and CRLF rows", () => {
+  for (const newline of ["\n", "\r\n"]) {
+    const map = parseMap([
+      " 00000H 00009H 0000AH DATAS    ",
+      " 00010H 00015H 00006H CODES    ",
+      " 00020H 0011FH 00100H STACKS STACK",
+    ].join(newline), []);
+    assert.deepEqual([...map.segments.keys()], ["DATAS", "CODES", "STACKS"]);
+    assert.equal(map.segments.get("CODES").start, 0x10);
+    assert.equal(map.segments.get("DATAS").class, "");
+  }
+});
+
+test("MASM and TASM numeric operands cannot shift instruction offsets", () => {
+  const source = { path: __filename, text: "CODES SEGMENT\nMOV AX,1\nADD AX,0002H\nADD AX,0023H\nCODES ENDS" };
+  const map = parseMap("00000H 0009AH 0009BH CODES", [source]);
+  const rows = ["0000 B8 0001 MOV AX,1", "0003 05 0002 ADD AX,0002H", "0098 05 0023 ADD AX,0023H"];
+  for (const tasm of [false, true]) {
+    const listing = (tasm ? "Turbo Assembler\n" : "Microsoft Macro Assembler\n") +
+      " CODES SEGMENT\n" + rows.map((row, i) => tasm ? `${i + 2}\t${row}` : row).join("\n");
+    const parsed = parseListing(listing, [source], map);
+    assert.deepEqual([...parsed.lines.keys()], [0, 3, 0x98]);
+    assert.equal(parsed.lines.get(3).line, 3);
+    assert.equal(parsed.lines.get(0x98).line, 4);
+    assert.equal(parsed.lines.has(2), false);
+    assert.equal(parsed.lines.has(0x23), false);
+  }
+});
+
+test("DOS AH=09 returns the terminator in AL and preserves caller carry", async () => {
+  const s = await fixture("cd21");
+  try {
+    s.setReg("AX", 0x0900);
+    s.setReg("DX", 0);
+    s.setReg("EFLAGS", 0x203);
+    s.write(0x30000, Buffer.from("Hello$"));
+    s.step();
+    assert.equal(s.reg("AX"), 0x0924);
+    assert.equal(s.reg("EFLAGS") & 1, 1);
+  } finally { s.close(); }
+});
+
+test("identical instructions in reordered segments retain their own source lines", () => {
+  const source = { path: __filename, text: "FIRST SEGMENT\nNOP\nFIRST ENDS\nSECOND SEGMENT\nNOP\nSECOND ENDS" };
+  const map = parseMap("00000H 00000H 00001H FIRST\n00010H 00010H 00001H SECOND", [source]);
+  const parsed = parseListing(" SECOND SEGMENT\n0000 90 NOP\n SECOND ENDS\n FIRST SEGMENT\n0000 90 NOP\n FIRST ENDS", [source], map);
+  assert.equal(parsed.lines.get(0x10).line, 5);
+  assert.equal(parsed.lines.get(0).line, 2);
+});
+
+test("INCLUDE instruction mapping can return to its parent's earlier entry index", () => {
+  const sources = [
+    { path: "parent.asm", text: ".code\nINCLUDE child.inc\nMOV BX,AX" },
+    { path: "child.inc", text: "MOV AX,8" },
+  ];
+  const map = parseMap("00000H 00004H 00005H _TEXT CODE", sources);
+  const listing = "Turbo Assembler\n 1\t0000 .code\n1 2\t0000 B8 0008 MOV AX,8\n 3\t0003 8B D8 MOV BX,AX";
+  const parsed = parseListing(listing, sources, map);
+  assert.deepEqual(parsed.lines.get(0), { path: "child.inc", line: 1 });
+  assert.deepEqual(parsed.lines.get(3), { path: "parent.asm", line: 3 });
+});
+
+test("TASM space-separated line numbers do not absorb a four-digit opcode", () => {
+  const source = { path: __filename, text: "CODES SEGMENT\nADD AX,AX\nCODES ENDS" };
+  const map = parseMap("00000H 00001H 00002H CODES", [source]);
+  const parsed = parseListing("Turbo Assembler\n CODES SEGMENT\n 2 0000 01C0 ADD AX,AX", [source], map);
+  assert.deepEqual([...parsed.lines.keys()], [0]);
+});
 test("tiny variables use linked declaration segment rather than pre-link DGROUP offsets", () => {
   const source = {
     path: __filename,
@@ -225,6 +294,7 @@ test("DAP continue stops at breakpoint, read/write/disassemble/evaluate/setVaria
       (await request("evaluate", { expression: "AX+2" })).body.result,
       "0x000A (10)",
     );
+    assert.equal((await request("evaluate", { expression: "-1" })).body.result, "-0x0001 (-1)");
     await request("writeMemory", {
       memoryReference: "0x30000",
       data: "CA A=".replace(" ", ""),

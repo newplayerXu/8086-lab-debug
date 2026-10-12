@@ -96,6 +96,16 @@
     "configuration": {
       "title": "8086 Lab",
       "properties": {
+        "8086lab.pythonPath": {
+          "type": "string",
+          "default": "",
+          "deprecationMessage": "Ignored since 0.4.0: the JavaScript/WASM runtime is bundled. Remove this legacy Python setting."
+        },
+        "8086lab.runtimePythonPath": {
+          "type": "string",
+          "default": "",
+          "deprecationMessage": "Ignored since 0.4.0: the JavaScript/WASM runtime is bundled. Remove this legacy Python setting."
+        },
         "8086lab.dosboxPath": {
           "type": "string",
           "default": "",
