@@ -1,6 +1,6 @@
 # GitHub 托管与 Microsoft Marketplace 发布
 
-记录日期：2026-10-12。当前版本为 0.2.0 预览候选。`local8086` 只是本地占位发布者，尚未上架。
+记录日期：2026-10-12。版本 0.2.0 已于本日提交 Marketplace。真实发布者为 `newplayerxu`，源码仓库为 https://github.com/newplayerXu/8086-lab-debug 。提交后最后确认状态为 Verifying，公开可安装状态待核验。
 
 ## 一份源码，两种分发
 
