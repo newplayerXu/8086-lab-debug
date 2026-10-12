@@ -162,7 +162,7 @@ function prepareSources(program, encoding, build, assembler) {
 function parseMap(text, sources) {
   const segments = new Map();
   for (const m of text.matchAll(
-    /^\s*([0-9A-F]+)H\s+[0-9A-F]+H\s+([0-9A-F]+)H\s+(\w+)(?:\s+(\w+))?/gim,
+    /^[ \t]*([0-9A-F]+)H[ \t]+[0-9A-F]+H[ \t]+([0-9A-F]+)H[ \t]+(\w+)(?:[ \t]+(\w+))?[ \t]*\r?$/gim,
   ))
     segments.set(m[3].toUpperCase(), {
       start: parseInt(m[1], 16),
@@ -195,6 +195,9 @@ function parseMap(text, sources) {
   return { segments, groups, model };
 }
 function parseListing(text, sources, map) {
+  // MASM starts with an offset; TASM prefixes it with decimal source numbers.
+  // Never guess between these layouts from numeric machine-code tokens.
+  const isTasm = /^[ \t]*Turbo Assembler\b/im.test(text);
   const lines = new Map(),
     symbols = new Map(),
     declarations = new Map();
@@ -272,6 +275,29 @@ function parseListing(text, sources, map) {
     fardata: "FAR_DATA",
     "fardata?": "FAR_BSS",
   };
+  let sourceSegment, sourcePath;
+  for (const entry of entries) {
+    if (sourcePath !== entry.path) {
+      sourcePath = entry.path;
+      sourceSegment = undefined;
+    }
+    const explicit = entry.text.match(/^(\w+)\s+SEGMENT\b/i);
+    const simple = entry.text.match(
+      /^\.(code|data\??|const|stack|fardata\??)(?=\s|$)(?:\s+(\w+))?/i,
+    );
+    if (explicit) sourceSegment = explicit[1].toUpperCase();
+    else if (simple) {
+      const name = simple[1].toLowerCase();
+      sourceSegment =
+        name === "code"
+          ? simple[2]?.toUpperCase() ||
+            (map.segments.has("_TEXT")
+              ? "_TEXT"
+              : [...map.segments].find(([, s]) => s.class.toUpperCase() === "CODE")?.[0])
+          : simplifiedNames[name];
+    } else if (/^\w+\s+ENDS\b/i.test(entry.text)) sourceSegment = undefined;
+    entry.segment = sourceSegment;
+  }
   for (const row of text.split(/\r?\n/)) {
     const start = row.match(/\b(\w+)\s+SEGMENT\b/i);
     if (start) {
@@ -300,7 +326,7 @@ function parseListing(text, sources, map) {
           : simplifiedNames[section];
       continue;
     }
-    const declaration = /Turbo Assembler/i.test(text)
+    const declaration = isTasm
       ? row.match(
           /^\s*(?:\d+ +)?\d+\s+([0-9A-F]{4})\s+.*?\b([A-Za-z_]\w*)\s+(DB|DW)\b/i,
         )
@@ -310,21 +336,28 @@ function parseListing(text, sources, map) {
         offset: map.segments.get(segment).start + parseInt(declaration[1], 16),
         size: declaration[3].toUpperCase() === "DB" ? 1 : 2,
       });
-    const m =
-      row.match(
-        /^\s*\d+\s+\d+\s+([0-9A-F]{4})\s+([0-9A-F]{2,})(?=\s|[rs*])/i,
-      ) ||
-      row.match(/^\s*(?:\d+\s+)?([0-9A-F]{4})\s+([0-9A-F]{2,})(?=\s|[rs*])/i);
+    const m = isTasm
+      ? row.match(
+          /^[ \t]*(?:\d+[ ]+)?\d+\t+([0-9A-F]{4})[ \t]+([0-9A-F]{2,})(?=[ \t]|[rs*])/i,
+        ) || row.match(
+          /^[ \t]*\d+[ ]+([0-9A-F]{4})[ \t]+([0-9A-F]{2,})(?=[ \t]|[rs*])/i,
+        )
+      : row.match(
+          /^[ \t]*([0-9A-F]{4})[ \t]+([0-9A-F]{2,})(?=[ \t]|[rs*])/i,
+        );
     if (!m || !segment || !map.segments.has(segment)) continue;
     const offset = parseInt(m[1], 16),
       address = map.segments.get(segment).start + offset,
-      normal = normalize(row),
-      cursor = cursors.get(segment) || 0;
-    const candidates = [...entries.slice(cursor), ...entries.slice(0, cursor)];
+      normal = normalize(row);
+    // INCLUDE returns to its parent file: keep independent, monotonic file cursors.
+    const candidates = entries.filter(
+      (e, index) => index >= (cursors.get(segment + "\0" + e.path) || 0),
+    );
     const match = candidates.find((e) => {
       const instruction = e.text.replace(/^\w+:\s*/, "");
       return (
         instruction &&
+        (!e.segment || e.segment === segment) &&
         !instruction.startsWith(".") &&
         !/\b(proc|endp|equ|db|dw|dd|dq|dt|end|segment|ends|assume|org|group|macro|endm|include|label)\b/i.test(
           instruction,
@@ -334,7 +367,7 @@ function parseListing(text, sources, map) {
     });
     if (match) {
       lines.set(address, { path: match.path, line: match.line });
-      cursors.set(segment, entries.indexOf(match) + 1);
+      cursors.set(segment + "\0" + match.path, entries.indexOf(match) + 1);
     }
   }
   for (const row of text.split(/\r?\n/)) {

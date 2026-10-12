@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1
+
+- Parse MAP segment rows without crossing blank Class columns into the following line.
+- Select MASM/TASM listing layouts explicitly so numeric instruction bytes cannot shift offsets.
+- Keep source matching within known segments, with independent monotonic cursors per source file to preserve INCLUDE returns.
+- Format negative evaluated values correctly; return AL=24h from DOS AH=09h.
+- Recognize obsolete Python settings with deprecation messages and clarify the two environment-check commands.
+- Add MAP/LST, repeated-segment and INCLUDE regression cases and a real-compiler numeric ADD mapping fixture.
+
 ## 0.4.0
 
 - Replace Python/Capstone runtime with inline JavaScript DAP, bundled Unicorn x86 WASM and iced-x86 WASM; no runtime setup/downloads.

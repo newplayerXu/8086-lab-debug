@@ -8,6 +8,11 @@ const root = path.resolve(__dirname, ".."),
   resources = process.env.MASMTASM_RESOURCES;
 const common = `.data\nRESULT DW ?\n.code\nSTART:\n MOV AX,@data\n MOV DS,AX\n MOV AX,8\n MOV RESULT,AX\n MOV AX,4C00H\n INT 21H\nEND START\n`;
 const formats = {};
+formats["numeric-add-offsets"] = {
+  source: ".model small\n.stack 100h\n.data\nRESULT DW 0\n.code\nSTART:\n MOV AX,@data\n MOV DS,AX\n MOV AX,1\n ADD AX,0002H\n JMP LATER\n ORG 0098H\nLATER:\n ADD AX,0023H\n MOV RESULT,AX\n MOV AX,4C00H\n INT 21H\nEND START\n",
+  format: "exe",
+  value: 0x26,
+};
 for (const model of ["small", "medium", "compact", "large", "huge"])
   formats[model] = {
     source: ".model " + model + "\n.stack 100h\n" + common,

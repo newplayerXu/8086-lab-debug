@@ -9,6 +9,8 @@ Debug 8086 assembly with registers, flags, data and stack in VS Code. Version 0.
 3. Select an assembler and emulator using MASM/TASM's status bar. With **jsdos** or **jsdos-x**, no external DOSBox executable is required. With **dosbox** or **dosbox-x**, install that selected emulator and configure its command in MASM/TASM.
 4. Run **8086 Lab: Open Register Tutorial**, then **8086 Lab: Debug Current ASM File**. Expand Registers, Flags, Data and Stack.
 
+**Check Bundled Runtime** checks the included CPU/disassembler. **Check Environment** checks the selected assembler and compilation emulator. Legacy `8086lab.pythonPath` and `8086lab.runtimePythonPath` settings are ignored since 0.4; remove them when VS Code displays the deprecation notice.
+
 The extension assembles actual machine code with the selected compiler, then executes it using Unicorn.js x86 WebAssembly; iced-x86 provides 16-bit disassembly. Choosing jsdos-x does not change the debugging execution engine into DOSBox-X: the emulator selection controls compilation. This is instructional instruction emulation, not a complete DOS/BIOS or cycle-accurate hardware simulator.
 
 ## Selection mapping
